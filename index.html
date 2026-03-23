@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SD和CY随机抽卡</title>
+    <style>
+      :root {
+        --pink-1: #ffd1e8;
+        --pink-2: #ff7fc8;
+        --card: rgba(255, 255, 255, 0.78);
+        --shadow: 0 10px 30px rgba(255, 63, 170, 0.25);
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, var(--pink-1), var(--pink-2));
+        color: #3a0b2b;
+      }
+
+      .wrap {
+        position: relative;
+        overflow: hidden;
+        width: min(520px, calc(100vw - 32px));
+        padding: 20px;
+      }
+
+      .card {
+        position: relative;
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        padding: 18px;
+        backdrop-filter: blur(6px);
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: 20px;
+        pointer-events: none;
+        background: radial-gradient(
+          circle at top,
+          rgba(255, 79, 184, 0.35),
+          rgba(255, 79, 184, 0) 60%
+        );
+        opacity: 0;
+        transition: opacity 200ms ease;
+      }
+
+      .card.win::before,
+      .card.lose::before {
+        opacity: 1;
+      }
+
+      .card.win {
+        animation: cardWinGlow 1200ms ease-out both;
+      }
+
+      .card.lose {
+        animation: cardLoseGlow 900ms ease-out both;
+      }
+
+      @keyframes cardWinGlow {
+        0% {
+          transform: translateY(0);
+          box-shadow: 0 10px 30px rgba(255, 63, 170, 0.25),
+            0 0 0 0 rgba(255, 79, 184, 0.35);
+        }
+        40% {
+          transform: translateY(-2px);
+          box-shadow: 0 16px 44px rgba(255, 63, 170, 0.35),
+            0 0 0 10px rgba(255, 79, 184, 0.12);
+        }
+        100% {
+          transform: translateY(0);
+          box-shadow: var(--shadow);
+        }
+      }
+
+      @keyframes cardLoseGlow {
+        0% {
+          transform: translateY(0);
+          box-shadow: var(--shadow);
+        }
+        35% {
+          transform: translateY(-1px);
+          box-shadow: 0 16px 44px rgba(255, 79, 184, 0.18);
+        }
+        100% {
+          transform: translateY(0);
+          box-shadow: var(--shadow);
+        }
+      }
+
+      .fx-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .particle {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        transform: translate(-50%, -50%);
+        will-change: transform, opacity, filter;
+        animation-name: particleFly;
+        animation-timing-function: ease-out;
+        animation-fill-mode: forwards;
+      }
+
+      .moneyParticle {
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #fff6c7, #ffd05a);
+        border: 1px solid rgba(170, 110, 20, 0.25);
+        color: #7a3f00;
+        font-weight: 1000;
+        font-size: 16px;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+        box-shadow: 0 8px 18px rgba(255, 160, 60, 0.22);
+      }
+
+      .sparkleParticle {
+        font-size: 15px;
+        color: #ff4fb8;
+        text-shadow: 0 0 10px rgba(255, 79, 184, 0.7);
+      }
+
+      @keyframes particleFly {
+        0% {
+          opacity: 1;
+          transform: translate(-50%, -50%) translate(0, 0) rotate(0deg)
+            scale(1);
+          filter: blur(0px);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%)
+            translate(var(--dx), var(--dy)) rotate(var(--rot))
+            scale(var(--scale));
+          filter: blur(1.2px);
+        }
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+
+      .sub {
+        margin: 0 0 14px;
+        opacity: 0.9;
+        line-height: 1.4;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #ff4fb8, #ff8bd5);
+        box-shadow: 0 10px 22px rgba(255, 79, 184, 0.35);
+        transition: transform 0.05s ease, filter 0.2s ease, opacity 0.2s ease;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button[disabled] {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .result {
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-weight: 800;
+        font-size: 18px;
+      }
+
+      .small {
+        margin-top: 10px;
+        font-size: 13px;
+        opacity: 0.85;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+
+      .pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.55);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card" id="card">
+        <h1>SD和CY今天是否可以赚钱</h1>
+        <p class="sub">点击“抽卡”，随机显示结果：当然可以 或 当然不行。</p>
+
+        <div class="row">
+          <button id="drawBtn" type="button">抽卡</button>
+        </div>
+
+        <div class="result" id="result">等待你的抽卡…</div>
+
+        <div class="small">
+          <div class="pill">累计：可以 <span id="winCount">0</span></div>
+          <div class="pill">累计：不行 <span id="loseCount">0</span></div>
+          <div class="pill">胜率 <span id="rate">0%</span></div>
+        </div>
+      </div>
+
+      <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+    </div>
+
+    <script>
+      (function () {
+        const LS_KEY = "sd_cy_draw_stats_v1";
+        const rng = () => (Math.random() < 0.5 ? "win" : "lose");
+
+        function loadStats() {
+          try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (!raw) return { win: 0, lose: 0 };
+            const obj = JSON.parse(raw);
+            return {
+              win: Number(obj.win || 0),
+              lose: Number(obj.lose || 0),
+            };
+          } catch {
+            return { win: 0, lose: 0 };
+          }
+        }
+
+        function saveStats(stats) {
+          localStorage.setItem(LS_KEY, JSON.stringify(stats));
+        }
+
+        function render(stats) {
+          const total = stats.win + stats.lose;
+          const rate = total ? Math.round((stats.win / total) * 100) : 0;
+          document.getElementById("winCount").textContent = String(stats.win);
+          document.getElementById("loseCount").textContent = String(
+            stats.lose
+          );
+          document.getElementById("rate").textContent = `${rate}%`;
+        }
+
+        function spawnParticles(fxLayer, originX, originY, kind) {
+          // kind: "money" | "sparkle"
+          const count = kind === "money" ? 28 : 20;
+          const maxDist = kind === "money" ? 220 : 120;
+          const text = kind === "money" ? "$" : "✦";
+
+          for (let i = 0; i < count; i++) {
+            const el = document.createElement("div");
+            el.className =
+              "particle " +
+              (kind === "money"
+                ? "moneyParticle"
+                : "sparkleParticle");
+            el.textContent = text;
+
+            // 让美元整体“向上喷涌”
+            const angle = (Math.random() * Math.PI) / 1.15; // 0..~pi/1.15
+            const dist = 70 + Math.random() * maxDist;
+            const dx =
+              Math.cos(angle) * dist * (Math.random() < 0.5 ? -1 : 1);
+            const dy = -Math.abs(Math.sin(angle) * dist) - (kind === "money" ? 40 : 10);
+
+            const rot = Math.random() * 360 - 180 + "deg";
+            const scale =
+              kind === "money"
+                ? 0.7 + Math.random() * 0.8
+                : 0.6 + Math.random() * 0.6;
+            const duration =
+              (kind === "money" ? 780 : 520) +
+              Math.random() * (kind === "money" ? 380 : 200);
+
+            el.style.setProperty("--x", originX + "px");
+            el.style.setProperty("--y", originY + "px");
+            el.style.setProperty("--dx", dx + "px");
+            el.style.setProperty("--dy", dy + "px");
+            el.style.setProperty("--rot", rot);
+            el.style.setProperty("--scale", scale);
+            el.style.animationDuration = duration + "ms";
+
+            fxLayer.appendChild(el);
+            el.addEventListener("animationend", () => el.remove());
+          }
+        }
+
+        function init() {
+          const drawBtn = document.getElementById("drawBtn");
+          const resultEl = document.getElementById("result");
+          const fxLayer = document.getElementById("fxLayer");
+          const cardEl = document.getElementById("card");
+
+          if (!drawBtn || !resultEl || !fxLayer || !cardEl) {
+            console.error("SD/CY 抽卡初始化失败：缺少关键 DOM 元素");
+            return;
+          }
+
+          let stats = loadStats();
+          render(stats);
+
+          drawBtn.onclick = () => {
+            if (drawBtn.disabled) return;
+            drawBtn.disabled = true;
+            resultEl.textContent = "抽取中…";
+
+            // 点击立刻给一点视觉反馈
+            cardEl.classList.remove("win", "lose");
+
+            setTimeout(() => {
+              const r = rng();
+              if (r === "win") {
+                resultEl.textContent = "当然可以！今天SD和CY很可能能赚钱。";
+                stats.win += 1;
+                cardEl.classList.remove("lose");
+                cardEl.classList.add("win");
+
+                // 计算喷涌起点（按钮中间偏上）
+                const layerRect = fxLayer.getBoundingClientRect();
+                const btnRect = drawBtn.getBoundingClientRect();
+                const originX = btnRect.left - layerRect.left + btnRect.width / 2;
+                const originY = btnRect.top - layerRect.top + btnRect.height * 0.2;
+
+                spawnParticles(fxLayer, originX, originY, "money");
+                spawnParticles(fxLayer, originX, originY + 10, "sparkle");
+              } else {
+                resultEl.textContent = "当然不行！今天SD和CY先稳一稳。";
+                stats.lose += 1;
+                cardEl.classList.remove("win");
+                cardEl.classList.add("lose");
+
+                const layerRect = fxLayer.getBoundingClientRect();
+                const btnRect = drawBtn.getBoundingClientRect();
+                const originX = btnRect.left - layerRect.left + btnRect.width / 2;
+                const originY = btnRect.top - layerRect.top + btnRect.height / 2;
+
+                spawnParticles(fxLayer, originX, originY, "sparkle");
+              }
+
+              saveStats(stats);
+              render(stats);
+
+              drawBtn.disabled = false;
+              setTimeout(() => cardEl.classList.remove("win", "lose"), 1300);
+            }, 650);
+          };
+        }
+
+        if (document.readyState === "loading") {
+          window.addEventListener("DOMContentLoaded", init);
+        } else {
+          init();
+        }
+      })();
+    </script>
+  </body>
+</html>
