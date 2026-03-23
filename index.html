@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SD和CY随机抽卡</title>
+    <style>
+      :root {
+        --pink-1: #ffd1e8;
+        --pink-2: #ff7fc8;
+        --card: rgba(255, 255, 255, 0.78);
+        --shadow: 0 10px 30px rgba(255, 63, 170, 0.25);
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB",
+          "Microsoft YaHei", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, var(--pink-1), var(--pink-2));
+        color: #3a0b2b;
+      }
+
+      .wrap {
+        width: min(520px, calc(100vw - 32px));
+        padding: 20px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        padding: 18px;
+        backdrop-filter: blur(6px);
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+
+      .sub {
+        margin: 0 0 14px;
+        opacity: 0.9;
+        line-height: 1.4;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #ff4fb8, #ff8bd5);
+        box-shadow: 0 10px 22px rgba(255, 79, 184, 0.35);
+        transition: transform 0.05s ease, filter 0.2s ease, opacity 0.2s ease;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button[disabled] {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .result {
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-weight: 800;
+        font-size: 18px;
+      }
+
+      .small {
+        margin-top: 10px;
+        font-size: 13px;
+        opacity: 0.85;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+
+      .pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.55);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>SD和CY今天是否可以赚钱</h1>
+        <p class="sub">点击“抽卡”，随机显示结果：当然可以 或 当然不行。</p>
+
+        <div class="row">
+          <button id="drawBtn" type="button">抽卡</button>
+        </div>
+
+        <div class="result" id="result">等待你的抽卡…</div>
+
+        <div class="small">
+          <div class="pill">累计：可以 <span id="winCount">0</span></div>
+          <div class="pill">累计：不行 <span id="loseCount">0</span></div>
+          <div class="pill">胜率 <span id="rate">0%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const drawBtn = document.getElementById("drawBtn");
+      const resultEl = document.getElementById("result");
+      const winCountEl = document.getElementById("winCount");
+      const loseCountEl = document.getElementById("loseCount");
+      const rateEl = document.getElementById("rate");
+
+      const LS_KEY = "sd_cy_draw_stats_v1";
+      const rng = () => (Math.random() < 0.5 ? "win" : "lose");
+
+      function loadStats() {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return { win: 0, lose: 0 };
+          const obj = JSON.parse(raw);
+          return {
+            win: Number(obj.win || 0),
+            lose: Number(obj.lose || 0),
+          };
+        } catch {
+          return { win: 0, lose: 0 };
+        }
+      }
+
+      function saveStats(stats) {
+        localStorage.setItem(LS_KEY, JSON.stringify(stats));
+      }
+
+      function render(stats) {
+        const total = stats.win + stats.lose;
+        const rate = total ? Math.round((stats.win / total) * 100) : 0;
+        winCountEl.textContent = String(stats.win);
+        loseCountEl.textContent = String(stats.lose);
+        rateEl.textContent = `${rate}%`;
+      }
+
+      let stats = loadStats();
+      render(stats);
+
+      drawBtn.addEventListener("click", () => {
+        if (drawBtn.disabled) return;
+        drawBtn.disabled = true;
+
+        resultEl.textContent = "抽取中…";
+
+        setTimeout(() => {
+          const r = rng();
+          if (r === "win") {
+            resultEl.textContent = "当然可以！今天SD和CY很可能能赚钱。";
+            stats.win
